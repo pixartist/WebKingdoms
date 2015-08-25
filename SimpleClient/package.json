@@ -1,0 +1,10 @@
+{
+  "name": "SimpleClient",
+  "version": "0.0.0",
+  "description": "SimpleClient",
+  "main": "client.js",
+  "author": {
+    "name": "pixartist",
+    "email": ""
+  }
+}

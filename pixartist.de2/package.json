@@ -1,0 +1,17 @@
+{
+  "name": "pixartist.de2",
+  "version": "0.0.0",
+  "description": "pixartist.de2",
+  "main": "server.js",
+  "author": {
+    "name": "pixartist",
+    "email": ""
+  },
+  "dependencies": {
+    "cookie-session": "^1.2.0",
+    "express": "^4.13.3",
+    "q": "^1.4.1",
+    "random-seed": "^0.2.0",
+    "simplex-noise": "^2.2.0"
+  }
+}
