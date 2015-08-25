@@ -1,32 +1,12 @@
 ﻿var simplex = require('simplex-noise');
 var rnd = require('random-seed');
 var event = require('events');
-var settings =
- {
-    chunkSize: 16,
-    worldHeight: 256,
-    noiseScaleBase: 0.01,
-    tileTypeCount: 6,
-    maxUpdatesPerTick: 64
-}
+
 Number.prototype.mod = function (n)
 {
     return ((this % n) + n) % n;
 };
-var getWorldLocation = function(pTile, pChunk)
-{
-    return addPoint3(pTile, scalePoint3(pChunk, settings.chunkSize));
-}
-//type
-var TileType = 
- {
-    AIR: 0,
-    GRANITE: 1,
-    DIRT: 2,
-    GRASS: 3,
-    LEAFS: 4,
-    LOG: 5
-};
+
 
 //point2
 var scalePoint2 = function (p, v)
@@ -68,10 +48,39 @@ Point3.prototype.toString = function ()
     return "{" + this.x + ", " + this.y + ", " + this.h + "}";
 }
 
+var getWorldLocation = function (pTile, pChunk)
+{
+    return addPoint3(pTile, scalePoint3(pChunk, settings.chunkSize));
+}
+//type
+var TileType = 
+ {
+    AIR: 0,
+    GRANITE: 1,
+    DIRT: 2,
+    GRASS: 3,
+    LEAFS: 4,
+    LOG: 5
+};
+var Direction = 
+ {
+    LEFT: new Point3(-1, 0, 0),
+    RIGHT: new Point3(1, 0, 0),
+    INFRONT: new Point3(0, -1, 0),
+    BEHIND: new Point3(0, 1, 0),
+    BELOW: new Point3(0, 0, -1),
+    ABOVE: new Point3(0, 0, 1)
+}
+var settings =
+ {
+    noiseScaleBase: 0.01,
+    tileTypeCount: 6,
+    maxUpdatesPerTick: 64,
+    worldSize: new Point3(128, 128, 32)
+}
 //world
 var World = function (seed)
 {
-    this.chunks = [];
     this.updateQueue = [];
     this.updateQueue[0] = [];
     this.updateQueue[1] = [];
@@ -79,49 +88,44 @@ var World = function (seed)
     this.seed = seed;
     this.random = new rnd(seed);
     this.noise = new simplex(this.random);
+    this.create();
 };
-World.prototype.getChunk = function (p)
+World.prototype.create = function()
 {
-    console.log("Getting chunk " + p);
-    var c = this.chunks[p.x];
-    if (c == undefined)
-        this.chunks[p.x] = [];
-    c = this.chunks[p.x][p.y];
-    if (c == undefined)
+    this.tiles = [];
+    for (var x = 0; x < settings.worldSize.x; x++)
     {
-        var c = new Chunk(p.x, p.y, this);
-        this.chunks[p.x][p.y] = c;
+        this.tiles[x] = [];
+        for (var y = 0; y < settings.worldSize.y; y++)
+        {
+            this.tiles[x][y] = [];
+            for (var h = 0; h < settings.worldSize.h; h++)
+            {
+                var n = this.noise.noise4D(x * settings.noiseScaleBase, y * settings.noiseScaleBase, h * settings.noiseScaleBase, 0) * settings.tileTypeCount;
+                this.tiles[x][y][h] = Math.floor(n);
+            }
+        }
+        console.log("Generating world: " + 100 * (x / settings.worldSize.x) + "%");
     }
-    return c;
+    console.log("Done");
 }
-World.prototype.getTile = function (p, callback)
+World.prototype.isLegalCoord = function(p)
+{
+    return p.x >= 0 && p.y >= 0 && p.h >= 0 && p.x < settings.worldSize.x && p.y < settings.worldSize.y && p.h < settings.worldSize.h;
+}
+World.prototype.getTile = function (p)
 {
     console.log("Getting tile " + p);
-    var cp = new Point2(Math.floor(p.x / settings.chunkSize), Math.floor(p.y / settings.chunkSize));
-    var tp = new Point3(p.x.mod(settings.chunkSize), p.y.mod(settings.chunkSize), p.h);
-    var c = this.getChunk(cp);
-    if (!c.ready)
-        c.eventEmitter.once('ready', function ()
-        {
-            callback(p, c.tiles[tp.x][tp.y].tiles[tp.h]);
-        });
-    else
-        callback(p, c.tiles[tp.x][tp.y].tiles[tp.h]);
+    if (this.isLegalCoord(p))
+        return this.tiles[p.x][p.y][p.h];
+    return 0;
 }
-World.prototype.setTileType = function (p, t, update, callback)
+World.prototype.setTileType = function (p, t, update)
 {
-    
-    if (update == undefined)
-        update = true;
-    this.getTile(p, function (p, tile)
-    {
-        console.log("Setting tile " + p + " to " + t);
-        tile.setType(t, update)
-        if (callback)
-            callback(p, tile);
-    });
+    if (this.isLegalCoord(p))
+        this.tiles[p.x][p.y][p.h].setType(t, update);
 }
-World.prototype.requestUpdate = function (p)
+World.prototype.requestUpdate = function (i)
 {
     console.log("Adding " + p + " to update queue");
     if (this.updateQueue[this.activeUpdateQueue][p] == undefined)
@@ -150,7 +154,7 @@ World.prototype.tick = function ()
         this.activeUpdateQueue = q;
     }
 }
-World.prototype.toJSON = function ()
+/*World.prototype.toJSON = function ()
 {
     var chunks = [];
     for (x in this.chunks)
@@ -161,83 +165,24 @@ World.prototype.toJSON = function ()
         }
     }
     return { seed: this.seed, chunks: chunks }
-}
+}*/
 //chunk
-var Chunk = function (x, y, world)
-{
-    console.log("Creating chunk " + x + " " + y);
-    this.eventEmitter = new event.EventEmitter();
-    this.world = world;
-    this.location = new Point2(x, y);
-    this.tiles = [];
-    this.ready = false;
-    for (var x = 0; x < settings.chunkSize; x++)
-    {
-        this.tiles[x] = [];
-        for (var y = 0; y < settings.chunkSize; y++)
-        {
-            this.tiles[x][y] = {top: 0, tiles: []};
-            for (var h = 0; h < settings.worldHeight; h++)
-            {
-                this.tiles[x][y].tiles[h] = new Tile(x, y, h, this);
-            }
-        }
-    }
-    this.ready = true;
-    this.eventEmitter.emit('created', this);
-};
 
-Chunk.prototype.getTile = function(p)
-{
-    return this.tiles[p.x][p.y].tiles[p.h];
-}
-
-Chunk.prototype.toJSON = function ()
-{
-    var json = [];
-    for (var x = 0; x < settings.chunkSize; x++)
-    {
-        json[x] = [];
-        for (var y = 0; y < settings.chunkSize; y++)
-        {
-            json[x][y] = [];
-            for (var h = 0; h < settings.worldHeight; h++)
-            {
-                json[x][y][h] = this.tiles[x][y].tiles[h].toJSON();
-            }
-        }
-    }
-    return json;
-}
 
 //tile
-var Tile = function (localX, localY, localH, chunk)
+var Tile = function (p, t, world)
 {
     
-    this.chunk = chunk;
-    this.tileLocation = new Point3(localX, localY, localH);
+    this.world = world;
+    this.tileLocation = new Point3(p.x, p.y, p.h);
     this.neighbours = [];
-    var wl = getWorldLocation(this.tileLocation, this.chunk.location);
-    
-    this.neighbours.push(addPoint3(wl, new Point3(1, 0, 0)));
-    this.neighbours.push(addPoint3(wl, new Point3(-1, 0, 0)));
-    this.neighbours.push(addPoint3(wl, new Point3(0, 1, 0)));
-    this.neighbours.push(addPoint3(wl, new Point3(0, -1, 0)));
-    if (localH < settings.worldHeight - 1)
-        this.neighbours.push(addPoint3(wl, new Point3(0, 0, 1)));
-    if (localH > 0)
-        this.neighbours.push(addPoint3(wl, new Point3(0, 0, -1)));
-
-    Object.defineProperty(this, "worldLocation", 
+    for(var d in Direction)
     {
-        get :
- function ()
-        {
-            return getWorldLocation(this.tileLocation, this.chunk.location);
-        }
-    });
-    var n = (1 + chunk.world.noise.noise3D(this.tileLocation.x * settings.noiseScaleBase, this.tileLocation.y * settings.noiseScaleBase, this.tileLocation.h * settings.noiseScaleBase)) / 2;
-    this.setType(Math.floor(n * settings.tileTypeCount));
+        var l = addPoint3(p, Direction[d]);
+        if (world.isLegalCoord(l))
+            this.neighbours.push(l);
+    }
+    this.type = t;
 };
 
 Tile.prototype.setType = function (type, update)
@@ -260,7 +205,6 @@ Tile.prototype.toJSON = function ()
     return { t: this.type };
 }
 exports.World = World;
-exports.Chunk = Chunk;
 exports.Point2 = Point2;
 exports.Point3 = Point3;
 exports.TileType = TileType;

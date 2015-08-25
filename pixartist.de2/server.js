@@ -12,6 +12,8 @@ app.use(cookieSession({
     secret: '31"!!aßs2'
 }));
 
+var world = new game.World(0);
+
 var authCheck = function (req, res, callback)
 {
     if (req.session.loggedIn)
