@@ -34,7 +34,6 @@
     <Compile Include="auth.js" />
     <Compile Include="game.js" />
     <Compile Include="server.js" />
-    <Content Include=".gitignore" />
     <Content Include="License.md" />
     <Content Include="package.json" />
     <Content Include="README.md" />
