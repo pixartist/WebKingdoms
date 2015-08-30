@@ -5,6 +5,7 @@
     <VSToolsPath Condition="'$(VSToolsPath)' == ''">$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)</VSToolsPath>
     <Name>WebKingdoms</Name>
     <RootNamespace>pixartist.de2</RootNamespace>
+    <NodeExeArguments>--max-old-space-size=8192</NodeExeArguments>
   </PropertyGroup>
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
@@ -34,6 +35,8 @@
     <Compile Include="auth.js" />
     <Compile Include="game.js" />
     <Compile Include="server.js" />
+    <Compile Include="session.js" />
+    <Compile Include="dataDefinitions.js" />
     <Content Include="License.md" />
     <Content Include="package.json" />
     <Content Include="README.md" />

@@ -8,7 +8,11 @@ function Auth()
 
 Auth.prototype.authenticate = function(username, password)
 {
+    var userData = {id:0};
     var deferred = q.defer();
-    deferred.resolve("Success");
+    if (username === "pixartist")
+        deferred.resolve(userData);
+    else
+        deferred.reject("User not found");
     return deferred.promise;
 }
